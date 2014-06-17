@@ -3,6 +3,8 @@ woocommerce-payment-gateway-allpay
 
 It's a plugin for woocommerce AllPay third-party payment gateway 
 It's alpha version. Further testing needs to be done.
+Feel free to contact me for any questions.
+Email: minka1101@gmail.com
 
 /**
  * Allpay Payment Gateway
