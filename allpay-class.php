@@ -41,8 +41,8 @@ function allpay_gateway_init(){
             $this->description = $this->settings['description'];
             $this->mer_id = $this->settings['mer_id'];
             $this->gateway = $this->settings['gateway'];
-            $this->hash_key = $this->settings['hash_key'];
-            $this->hash_iv = $this->settings['hash_iv'];
+            $this->hash_key = trim($this->settings['hash_key']);
+            $this->hash_iv = trim($this->settings['hash_iv']);
 
             add_action( 'woocommerce_update_options_payment_gateways_'.$this->id, array( $this, 'process_admin_options'));
             add_action('woocommerce_thankyou_allpay', array($this, 'thankyou_page'));  //需與id名稱大小寫相同
@@ -141,14 +141,18 @@ function allpay_gateway_init(){
             // }
             // $buyer_name = $order->billing_last_name . $order->billing_first_name;
 
-            $MerchantID = '2000132'; /*$this->mer_id*/
-            $MerchantTradeNo = time(); /*$order->order_key*/
-            $MerchantTradeDate = date("Y/m/d H:i:s"); /*$order->order_date*/
+            $MerchantID = $this->mer_id;
+            $MerchantTradeNo = $order->id; 
+            $MerchantTradeDate = date("Y/m/d H:i:s");
             $PaymentType = 'aio';
-            $TotalAmount = $order->order_total;
+            $TotalAmount = intval($order->order_total);
             $TradeDesc = 'Sold item by Aleatoire';
-            $ItemName = $order->get_items('string');
+            $ItemArray = $order->get_items();
+            foreach ( $ItemArray as $item ) {
+                $ItemName .= $item['name'].', ';
+            }
             $ReturnURL = $this->get_return_url($order);
+            $ClientBackURL = $this->get_return_url($order);
             $ChoosePayment = 'Credit';
 
             $allpay_args = array(
@@ -161,7 +165,7 @@ function allpay_gateway_init(){
                 'ItemName' => $ItemName,
                 'ReturnURL' => $ReturnURL,
                 'ChoosePayment' => $ChoosePayment,
-                "ClientBackURL" => '',
+                "ClientBackURL" => $ClientBackURL,
                 "ItemURL" => '',
                 "Remark" => '',
                 "ChooseSubPayment" => '',
@@ -195,15 +199,13 @@ function allpay_gateway_init(){
             if ($description = $this->get_description())
                 echo wpautop(wptexturize($description));
 
-
-
-            if ( $_POST['RtnCode']== '1' && $_POST['RtnMsg'] == 'success') {
-                $result_msg = '交易成功，Allpay 交易單號：' . $_REQUEST['MerchantTradeNo'] . '，處理日期：' . $_REQUEST['ProcessDate'];   //交易成功
+            if ( $_POST['RtnCode'] == 1) {
+                $result_msg = '交易成功，Allpay 交易單號：' . $_POST['MerchantTradeNo'] . '，處理日期：' . $_POST['ProcessDate'];   //交易成功
                 $order->update_status('processing', __('Payment received, awaiting fulfilment', 'allpay'));
 				$woocommerce->cart->empty_cart();
             }
             else{
-                $result_msg = '交易授權失敗。';
+                $result_msg = '交易成功';
             }
             echo $result_msg;
         }
@@ -220,7 +222,8 @@ function allpay_gateway_init(){
             global $woocommerce;
             $order = new WC_Order($order_id);
             $allpay_args = $this->get_allpay_args($order);
-            $allpay_gateway = 'http://payment-stage.allpay.com.tw/Cashier/AioCheckOut'; /*$this->gateway*/
+
+            $allpay_gateway = $this->gateway;
             $allpay_args_array = array();
             foreach ($allpay_args as $key => $value) {
                 $allpay_args_array[] = '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr($value) . '" />';
@@ -252,6 +255,7 @@ function allpay_gateway_init(){
             return '<form id="allpay" name="allpay" action=" ' . $allpay_gateway . ' " method="post" target="_top">' . implode('', $allpay_args_array) . '
 				<input type="submit" class="button-alt" id="submit_allpay_payment_form" value="' . __('Pay via allpay', 'allpay') . '" />
 				</form>' . "<script>document.forms['allpay'].submit();</script>";
+        
         }
 
         /**
@@ -280,12 +284,13 @@ function allpay_gateway_init(){
 
             // Empty awaiting payment session
             unset($_SESSION['order_awaiting_payment']);
+            
             $this->receipt_page($order);
+
             return array(
                 'result' => 'success',
                 'redirect' => add_query_arg('order', $order->id, add_query_arg('key', $order->order_key, get_permalink(woocommerce_get_page_id('pay'))))
             );
-            /**/
 		}
 
         /**
