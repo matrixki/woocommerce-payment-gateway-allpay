@@ -16,5 +16,5 @@ Email: minka1101@gmail.com
  * @class       Allpay
  * @extends     WC_Payment_Gateway
  * @version     1.0
- * @author      AFT Mike   
+ * @author      Mike Ko   
  */
